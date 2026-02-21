@@ -1,4 +1,4 @@
-function malaxar {
+function mx {
     local fast=""
     local valgrind=0
     local OPTIND
