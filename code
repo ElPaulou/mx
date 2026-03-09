@@ -67,3 +67,16 @@ function go {
             return 1;;
     esac
 }
+
+function push {
+  if [ $# -eq 1 ]; then
+    git add .
+    git commit -m $1
+    git push
+    return 0
+  fi
+  echo "Il faut le commentaire !"
+  return 1
+}
+
+alias pull="git pull"
