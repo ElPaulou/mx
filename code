@@ -86,12 +86,14 @@ function push {
         return 1
     fi
     git add .
+    echo $change
     if [ $change -eq 0 ]; then
         git commit -m $1
+        git push origin main
     else
         git commit -m $2
+        git push origin $1
     fi
-    git push
     return 0
 }
 
