@@ -99,7 +99,7 @@ function push {
 
 alias pull="git pull"
 alias pacman="sudo pacman"
-alias update="pacman -Syu && paru -Syu"
+alias update="timeshift --create --comments \"before update\" && pacman -Syu && paru -Syu"
 alias synchroniser="rclone copy ~/Documents test:Documents/"
 alias trail="wine ~/Documents/Trailmaker/Trailmakers\ \(v1.6.2.46098\)/Trailmakers.exe"
 alias binds="code ~/.config/hypr/binds.conf"
