@@ -52,10 +52,16 @@ function go {
     local nb=${1:2}
     case $type in
         'tp') cd TP/
-              code "TP$nb"
-              cd TP$nb
-              if [ -f "TP$nb.pdf" ]; then
-                  evince "TP$nb.pdf" &
+              if [ -d TP$nb ]; then
+                code "TP$nb"
+                cd TP$nb
+                if [ -f "TP$nb.pdf" ]; then
+                    evince "TP$nb.pdf" & disown
+                fi
+              else
+                mkdir "TP$nb"
+                code TP$nb
+                cd TP$nb
               fi ;;
         'dm') cd DM/
               code "DM$nb"
@@ -99,7 +105,7 @@ function push {
 
 alias pull="git pull"
 alias pacman="sudo pacman"
-alias update="timeshift --create --comments \"before update\" && pacman -Syu && paru -Syu"
+alias update="pacman -Syu && paru -Syu"
 alias synchroniser="rclone copy ~/Documents test:Documents/"
 alias trail="wine ~/Documents/Trailmaker/Trailmakers\ \(v1.6.2.46098\)/Trailmakers.exe"
 alias binds="code ~/.config/hypr/binds.conf"
