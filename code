@@ -103,6 +103,17 @@ function push {
     return 0
 }
 
+function colle {
+    local num=1
+    z ~/Documents/prepa/Maths/colles
+    while [ -f "sem${num}.pdf" ]
+    do
+        let num=$(($num+1))
+    done
+    let num=$(($num-1))
+    evince sem${num}.pdf & disown
+}
+
 alias pull="git pull"
 alias pacman="sudo pacman"
 alias update="pacman -Syu && paru -Syu"
