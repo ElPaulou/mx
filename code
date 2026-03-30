@@ -38,7 +38,7 @@ function go {
     while getopts "h" opt; do
         case $opt in
             h) echo "Utilisation : go tp11, go dm2..."
-               echo "Va dans le dossier ~/Documents/prepa/info, puis dans DM/ si le premier argument commence par dm ou DM, TP/ si ça commence par tp ou TP."
+               echo "Va dans le dossier ~/Documents/prepa/info, puis dans DM/ si le premier argument commence par dm, TP/ si ça commence par tp."
                echo "Ouvre le dossier donné en argument (en mettant des majuscules) dans VS Code, puis s'il y a un .pdf l'ouvre (il faut qu'il ait le même nom que le dossier)."
                return 0 ;;
             \?) echo "option invalide. -h pour la liste des options."
@@ -47,9 +47,21 @@ function go {
     done
     
     shift $((OPTIND - 1))
+
     cd ~/Documents/prepa/info
-    local type=${1:0:2}
-    local nb=${1:2}
+    local type=$1
+    local nb="rien"
+    if [ $# -eq 1 ]; then
+        if [ $type = "tp" ]; then
+            nb=$(cat ~/.fct/var/der_TP.txt)
+        else
+            nb=$(cat ~/.fct/var/der_DM.txt)
+        fi
+    else
+        nb=$2
+        echo $nb > ~/.fct/var/der_TP.txt
+    fi
+
     case $type in
         'tp') cd TP/
               if [ -d TP$nb ]; then
@@ -67,7 +79,7 @@ function go {
               code "DM$nb"
               cd DM$nb
               if [ -f "DM$nb.pdf" ]; then
-                  evince "DM$nb.pdf" &
+                  evince "DM$nb.pdf" & disown
               fi ;;
         \?) echo "Argument de la mauvaise forme. -h pour l'aide."
             return 1;;
