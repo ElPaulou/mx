@@ -9,7 +9,7 @@ function mx {
             f) fast="-Ofast -DNDEBUG" ;;
             o) fast="-O0";;
             v) valgrind=1;;
-            c) exec=0;
+            c) exec=0;;
             h) echo "Options valides :"
                echo "   -f : Ajoute les options -Ofast et -DNDEBUG lors de la compilation pour un executable plus rapide"
                echo "   -v : execute le code dans Valgrind"
