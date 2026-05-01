@@ -11,7 +11,7 @@ function mx {
             o) fast="-O0";;
             v) valgrind=1;;
             c) exec=0;;
-            a) read -p "Saisir le ou les argument(s) : " args
+            a) read -p "Saisir le ou les argument(s) : " args;;
             h) echo "Options valides :"
                echo "   -f : Ajoute -DNDEBUG lors de la compilation"
                echo "   -v : execute le code dans Valgrind"
@@ -34,7 +34,9 @@ function mx {
             ./"$nom_prog" $args
         else
             valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes -s ./"$nom_prog" $args
-            if [ -f vgcore.* ]; then rm vgcore.* fi
+            if [ -f vgcore.* ]; then
+                rm vgcore.*
+            fi
         fi
         rm $nom_prog
     fi
@@ -43,7 +45,7 @@ function mx {
 function go {
     while getopts "h" opt; do
         case $opt in
-            h) echo "Utilisation : go tp11, go dm2..."
+            h) echo "Utilisation : go tp 11, go dm 2..."
                echo "Va dans le dossier ~/Documents/prepa/info, puis dans DM/ si le premier argument commence par dm, TP/ si ça commence par tp."
                echo "Ouvre le dossier donné en argument (en mettant des majuscules) dans VS Code, puis s'il y a un .pdf l'ouvre (il faut qu'il ait le même nom que le dossier)."
                return 0 ;;
