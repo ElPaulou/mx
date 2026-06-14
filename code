@@ -1,17 +1,24 @@
+alias suicide="kill -9 $PPID"
+
+_mx_completion() {
+    _files -g '*.c'
+}
 function mx {
     local exec=1
-    local fast="-O3"
+    local fast="-Ofast"
     local valgrind=0
-    local args="0"
+    local presence_args=0
+    local args=""
     local OPTIND
 
     while getopts "f o v c a h" opt; do
         case $opt in
             f) fast="-DNDEBUG" ;;
             o) fast="-O0";;
-            v) valgrind=1;;
+            v) valgrind=1
+               fast="-O0";;
             c) exec=0;;
-            a) args="1";;
+            a) presence_args=1;;
             h) echo "Options valides :"
                echo "   -f : Ajoute -DNDEBUG lors de la compilation (uniquement pour C)"
                echo "   -v : execute le code dans Valgrind (uniquement pour C)"
@@ -27,17 +34,15 @@ function mx {
     
     shift $((OPTIND - 1))
 
-    if [ args="1" ]; then
+    if [ $presence_args -eq 1 ]; then
         echo "Saisir le ou les argument(s) : "
         read args
-    else
-        args=""
     fi
 
     case ${1: -1} in
         'c')
             local nom_prog=${1/.c/}
-            gcc -Wall -Wextra "${@:1}" $fast -march=native -mtune=native -flto -lm -g -o $nom_prog
+            gcc -Wall -Wextra "${@:1}" $fast -march=native -mtune=native -flto -lm -g3 -o $nom_prog
             if [ $exec -eq 1 ]; then
                 if [ $valgrind -eq 0 ]; then
                     ./"$nom_prog" $args
@@ -63,6 +68,8 @@ function mx {
             return 1;;
     esac
 }
+compdef _mx_completion mx
+
 
 function go {
     while getopts "h" opt; do
@@ -130,6 +137,7 @@ function go {
     esac
 }
 
+
 function push {
     local repo="main"
     local change=0
@@ -159,6 +167,7 @@ function push {
     return 0
 }
 
+
 function colle {
     z ~/Documents/prepa/Maths/colles
     local num=1
@@ -172,11 +181,59 @@ function colle {
         let num=$(($num-1))
     fi
     evince sem${num}.pdf & disown
-    kill -9 $PPID
+    suicide
 }
 
+
+_pdf_completion() {
+    _files -g '*.pdf'
+}
 function pdf {
     evince $1 & disown
+}
+compdef _pdf_completion pdf
+
+function fiche {
+    cd ~/Documents/prepa/fiches/physique
+    if [ $# -eq 1 ]; then
+        if [ $1 = "-h" ]; then 
+            echo "2 possibilités :"
+            echo "- Soit on ne met que le numéro de la fiche comme argument"
+            echo "- Soit on met le numéro du premier workspace, de la première et de la dernière fiche à ouvrir"
+            echo
+            echo "Options :"
+            echo "-d : affiche le numéro de la dernière fiche"
+            echo "-l : liste toutes les fiches présentes"
+            return 0
+        elif [ $1 = "-d" ]; then
+            ls | grep ".pdf" | tail -n 1
+            return 0
+        elif [ $1 = "-l" ]; then
+            ls | grep -F ".pdf" | tr "\n" " - " | sed 's/chap//g' | sed 's/.pdf//g' && echo
+            return 0
+        fi
+        pdf chap$1.pdf
+        pdf cours/chap$1.pdf
+    elif [ $# -eq 3 ]; then
+        local space=$1
+        local num_fiche=$2
+        while [ $num_fiche != $(($3+1)) ]
+        do
+            hyprctl dispatch workspace $space > /dev/null
+            hyprctl dispatch exec "evince ~/Documents/prepa/fiches/physique/chap${num_fiche}.pdf & disown" > /dev/null
+            hyprctl dispatch exec "evince ~/Documents/prepa/fiches/physique/cours/chap${num_fiche}.pdf & disown" > /dev/null
+            ((num_fiche++))
+            ((space++))
+        done
+    else
+        echo "Nombre d'arguments incorrect"
+        return 1
+    fi
+    # suicide
+}
+
+function test {
+    echo $#
 }
 
 alias pacman="sudo pacman"
@@ -185,5 +242,5 @@ alias synchroniser="rclone copy ~/Documents test:Documents/"
 alias trail="wine ~/Documents/Trailmaker/Trailmakers\ \(v1.6.2.46098\)/Trailmakers.exe"
 alias binds="code ~/.config/hypr/binds.conf"
 alias config="code ~/.config/hypr/"
-alias cd=z
+alias fct="code ~/.fct/Malaxar"
 alias tipe="z ~/Documents/TIPE-nt/Smith && code ."
