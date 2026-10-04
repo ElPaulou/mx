@@ -1,11 +1,13 @@
 alias suicide="kill -9 $PPID"
 
 _mx_completion() {
-    _files -g '*.c'
+    _files -g '*.(c|ml)'
 }
 function mx {
+    trap 'echo " " && rm -f "$nom_prog".cmi "$nom_prog".cmx "$nom_prog".o nom_prog' INT TERM EXIT
     local exec=1
     local fast="-Ofast"
+    local asserts=1
     local valgrind=0
     local presence_args=0
     local args=""
@@ -13,25 +15,26 @@ function mx {
 
     while getopts "f o v c a h" opt; do
         case $opt in
-            f) fast="-DNDEBUG" ;;
+            f) assert=0;;
             o) fast="-O0";;
             v) valgrind=1
                fast="-O0";;
             c) exec=0;;
             a) presence_args=1;;
-            h) echo "Options valides :"
-               echo "   -f : Ajoute -DNDEBUG lors de la compilation (uniquement pour C)"
-               echo "   -v : execute le code dans Valgrind (uniquement pour C)"
-               echo "   -o : remplace -03 par -O0 lors de la compilation pour que gcc ne modifie pas le code"
-               echo "   -c : ne fait que compiler"
-               echo "   -a : passe des arguments lors de l'execution. Metrre des guillemets autour des arguments s'il y en a plusieurs"
-               echo "   -h : affiche ce message"
+            h) echo "Utilisation : mx [OPTIONS] [FICHIERS]"
+               echo "Options valides :"
+               echo "-f : Retire les asserts lors de la compilation"
+               echo "-v : Exécute le code dans Valgrind (pour le C)"
+               echo "-o : Remplace -03 par -O0 lors de la compilation pour que gcc ne modifie pas le code (pour le C)"
+               echo "-c : Ne fait que compiler"
+               echo "-a : Passe des arguments au programme lors de l'execution. Mettre des guillemets autour des arguments s'il y en a plusieurs"
+               echo "-h : Affiche ce message"
                return 0 ;;
-            \?) echo "option invalide. -h pour la liste des options."
+            \?) echo "Option invalide. -h pour la liste des options."
                 return 1 ;;
         esac
     done
-    
+
     shift $((OPTIND - 1))
 
     if [ $presence_args -eq 1 ]; then
@@ -42,7 +45,12 @@ function mx {
     case ${1: -1} in
         'c')
             local nom_prog=${1/.c/}
-            gcc -Wall -Wextra "${@:1}" $fast -march=native -mtune=native -flto -lm -g3 -o $nom_prog
+            if [ $asserts -eq 1 ]; then
+                asserts=""
+            else
+                asserts="-DNDEBUG"
+            fi
+            gcc -Wall -Wextra "${@:1}" $fast $asserts -march=native -mtune=native -flto -lm -g3 -o $nom_prog
             if [ $exec -eq 1 ]; then
                 if [ $valgrind -eq 0 ]; then
                     ./"$nom_prog" $args
@@ -56,11 +64,16 @@ function mx {
             fi
         ;;
         'l')
+            if [ $asserts -eq 1 ]; then
+                asserts=""
+            else
+                asserts="-noassert"
+            fi
             local nom_prog=${1/.ml/}
-            ocamlopt -O3 -inline 40 -nodynlink -noassert -ccopt "-O3 -march=native -mtune=native -flto" -o nom_prog $1
-            if [ exec -eq 1 ]; then
-                ./nom_prog $args
-                rm nom_prog
+            ocamlopt -g -O3 -inline 40 -nodynlink $asserts -ccopt "-O3 -march=native -mtune=native -flto" -o nom_prog $1
+            if [ $exec -eq 1 ]; then
+                OCAMLRUNPARAM=b ./nom_prog $args
+                rm nom_prog *.cmi *.cmx *.o
             fi
             ;;
         ?)
@@ -70,19 +83,28 @@ function mx {
 }
 compdef _mx_completion mx
 
-
 function go {
-    while getopts "h" opt; do
+    if [ $# -eq 0 ]; then
+        1="-m"
+        2="tp"
+    fi
+
+    local ouvre=1
+    while getopts "m h" opt; do
         case $opt in
-            h) echo "Utilisation : go tp 11, go dm 2, go tp_p 17..."
-               echo "Ouvre le dossier donné en argument (en mettant des majuscules) dans VS Code, puis s'il y a un .pdf l'ouvre (il faut qu'il ait le même nom que le dossier)."
+            m) ouvre=0;;
+            h) echo "Utilisation : go tp 11, go dm 2, go tp_p ..."
+               echo "Ouvre le dossier donné en argument (en mettant des majuscules) dans Zed, puis s'il y a un .pdf l'ouvre (il faut qu'il ait le même nom que le dossier)."
                echo "tp correspond aux tp d'info, tp_p à ceux de physique"
+               echo "Si aucun nombre n'est donné en entrée, ouvre le dernier DM / TP"
+               echo "Options valides :"
+               echo "-m : ne fait que se déplacer vers le dossier, sans rien ouvrir"
                return 0 ;;
             \?) echo "option invalide. -h pour la liste des options."
                 return 1 ;;
         esac
     done
-    
+
     shift $((OPTIND - 1))
 
     local type=$1
@@ -100,43 +122,48 @@ function go {
 
     case $type in
         'tp')
-            z ~/Documents/prepa/info/TP/
+            z ~/Documents/prepa/spe/info/TP/
             if [ -d TP$nb ]; then
             else mkdir "TP$nb"
             fi
-                
-            code "TP$nb"
+
             z TP$nb
-            if [ -f "TP$nb.pdf" ]; then
-                evince "TP$nb.pdf" & disown
+            if [ $ouvre -eq 1 ]; then
+                zeditor "../TP$nb"
+                if [ -f "TP$nb.pdf" ]; then
+                    evince "TP$nb.pdf" & disown
+                fi
             fi;;
         'tp_p')
-            z ~/Documents/prepa/physique/TP/
+            z ~/Documents/prepa/spe/physique/TP/
             if [ -d TP$nb ]; then
             else mkdir "TP$nb"
             fi
-                
-            code "TP$nb"
+
             z TP$nb
-            if [ -f "TP$nb.pdf" ]; then
-                evince "TP$nb.pdf" & disown
+            if [ $ouvre -eq 1 ]; then
+                zeditor "../TP$nb"
+                if [ -f "TP$nb.pdf" ]; then
+                    evince "TP$nb.pdf" & disown
+                fi
             fi;;
         'dm')
-            z ~/Documents/prepa/info/DM/
+            z ~/Documents/prepa/spe/info/DM/
             if [ -d DM$nb ]; then
             else mkdir "TP$nb"
             fi
 
-            code "DM$nb"
             z DM$nb
-            if [ -f "DM$nb.pdf" ]; then
-                evince "DM$nb.pdf" & disown
+            if [ $ouvre -eq 1 ]; then
+                zeditor "../DM$nb"
+                if [ -f "DM$nb.pdf" ]; then
+                    evince "DM$nb.pdf" & disown
+                fi
             fi ;;
         \?) echo "Argument de la mauvaise forme. -h pour l'aide."
             return 1;;
     esac
 }
-
 
 function push {
     local repo="main"
@@ -149,7 +176,7 @@ function push {
                 return 1 ;;
         esac
     done
-    
+
     shift $((OPTIND - 1))
     if [ $# -eq 0 ]; then
         echo "Il faut le commentaire !"
@@ -167,9 +194,8 @@ function push {
     return 0
 }
 
-
 function colle {
-    z ~/Documents/prepa/Maths/colles
+    z ~/Documents/prepa/spe/Maths/colles
     local num=1
     if [ $# -eq 1 ]; then
         num=$1
@@ -184,7 +210,6 @@ function colle {
     suicide
 }
 
-
 _pdf_completion() {
     _files -g '*.pdf'
 }
@@ -194,9 +219,10 @@ function pdf {
 compdef _pdf_completion pdf
 
 function fiche {
-    cd ~/Documents/prepa/fiches/physique
+    local dir="~/Documents/prepa/sup/fiches/physique"
+    cd $dir
     if [ $# -eq 1 ]; then
-        if [ $1 = "-h" ]; then 
+        if [ $1 = "-h" ]; then
             echo "2 possibilités :"
             echo "- Soit on ne met que le numéro de la fiche comme argument"
             echo "- Soit on met le numéro du premier workspace, de la première et de la dernière fiche à ouvrir"
@@ -219,9 +245,10 @@ function fiche {
         local num_fiche=$2
         while [ $num_fiche != $(($3+1)) ]
         do
-            hyprctl dispatch workspace $space > /dev/null
-            hyprctl dispatch exec "evince ~/Documents/prepa/fiches/physique/chap${num_fiche}.pdf & disown" > /dev/null
-            hyprctl dispatch exec "evince ~/Documents/prepa/fiches/physique/cours/chap${num_fiche}.pdf & disown" > /dev/null
+            # echo "num_fiche = $num_fiche"
+            # hyprctl eval "hl.dispatch(hl.dsp.focus({ workspace = \"$space\" }))"
+            hyprctl eval "hl.dispatch(hl.dsp.exec_cmd(\"evince ${dir}/chap${num_fiche}.pdf\", { workspace = \"$space\" }))"
+            hyprctl eval "hl.dispatch(hl.dsp.exec_cmd(\"evince ${dir}/cours/chap${num_fiche}.pdf\", { workspace = \"$space\" }))"
             ((num_fiche++))
             ((space++))
         done
@@ -229,18 +256,29 @@ function fiche {
         echo "Nombre d'arguments incorrect"
         return 1
     fi
-    # suicide
+    suicide
 }
 
-function test {
-    echo $#
+function update_trad {
+    cd ~/Documents/curseforge/minecraft/Instances/Nomifactory\ CEu/resourcepacks/
+    unzip trad.zip
+    cp ~/Documents/prepa/utils/trad/Nomi-CEu/fr_fr_range.lang assets/questbook/lang/fr_fr.lang
+    zip -r trad.zip assets/ pack.mcmeta pack.png
+    rm -r assets/ pack.mcmeta pack.png
+
+    unzip trad_gt.zip
+    cp ~/Documents/prepa/utils/trad/gt/fr_fr.lang assets/gregtech/lang/fr_fr.lang
+    zip -r trad_gt.zip assets/ pack.mcmeta
+    rm -r assets/ pack.mcmeta
 }
 
 alias pacman="sudo pacman"
 alias update="pacman -Syu && paru -Syu"
 alias synchroniser="rclone copy ~/Documents test:Documents/"
 alias trail="wine ~/Documents/Trailmaker/Trailmakers\ \(v1.6.2.46098\)/Trailmakers.exe"
-alias binds="code ~/.config/hypr/binds.conf"
-alias config="code ~/.config/hypr/"
-alias fct="code ~/.fct/Malaxar"
-alias tipe="z ~/Documents/TIPE-nt/Smith && code ."
+alias binds="zeditor ~/.config/hypr/binds.lua"
+alias config="zeditor ~/.config/hypr/"
+alias fct="zeditor ~/.fct/Malaxar"
+alias tipe="z ~/Documents/TIPE-nt/Smith && zeditor ."
+alias zed=zeditor
+alias t="gio trash"
